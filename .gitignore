@@ -5,9 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+pyproject.toml
+.gitignore
 
 # Virtual environments
 .venv
+
+# uv lock file
+uv.lock
 
 # Auto-downloaded Real-ESRGAN binaries
 bin/
@@ -15,4 +20,5 @@ bin/
 # documentation
 tests/ 
 docs/
+
 
