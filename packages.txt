@@ -1,0 +1,4 @@
+libvulkan1
+mesa-vulkan-drivers
+libgl1
+libglib2.0-0

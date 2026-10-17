@@ -8,3 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Auto-downloaded Real-ESRGAN binaries
+bin/
+
+# documentation
+tests/ 
+docs/
+
