@@ -51,5 +51,3 @@ uv run imageresizer "./my_image.jpg" -o wallpaper.png -W 2560 -H 1440 -m realesr
 ## 🙏 Acknowledgements & Recommended Upstream Repository
 
 The AI super-resolution capability in this project is powered by **[xinntao/Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan)** — the official NCNN/Vulkan C++ implementation of [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN).
-
-If you need standalone, fast, cross-platform AI image/video upscaling on Intel, AMD, or Nvidia GPUs without heavy Python/PyTorch dependencies, we highly recommend checking out and starring **[xinntao/Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan)**!
