@@ -11,10 +11,11 @@ PRESETS = {
     "Tùy chỉnh (Custom)": None,
 }
 
-MODELS = {
-    "Ảnh thực tế / Chung (realesrgan-x4plus)": "realesrgan-x4plus",
-    "Anime / Digital Art (realesrgan-x4plus-anime)": "realesrgan-x4plus-anime",
-    "Anime nhanh (realesr-animevideov3)": "realesr-animevideov3",
+SPEED_MODES = {
+    "⚡ Siêu tốc — Lanczos + Smart Sharpen (< 0.5s, khuyên dùng trên Web)": (False, "realesr-animevideov3"),
+    "🚀 AI Nhanh — Real-ESRGAN Compact (realesr-animevideov3)": (True, "realesr-animevideov3"),
+    "💎 AI Tối đa — Ảnh thực tế (realesrgan-x4plus)": (True, "realesrgan-x4plus"),
+    "🎨 AI Tối đa — Anime / Art (realesrgan-x4plus-anime)": (True, "realesrgan-x4plus-anime"),
 }
 
 
@@ -23,10 +24,34 @@ def get_processor() -> ImageProcessor:
     return ImageProcessor()
 
 
+@st.cache_data(show_spinner=False, max_entries=12)
+def process_cached(
+    source_data: str | bytes,
+    target_w: int,
+    target_h: int,
+    model_name: str,
+    use_ai: bool,
+) -> tuple[bytes, tuple[int, int], bytes, tuple[int, int]]:
+    processor = get_processor()
+    orig_img = processor.load_image(source_data)
+    final_img = processor.process_image(
+        orig_img,
+        target_w=target_w,
+        target_h=target_h,
+        model=model_name,
+        use_ai=use_ai,
+    )
+    orig_buf = io.BytesIO()
+    orig_img.save(orig_buf, format="JPEG", quality=85)
+    final_buf = io.BytesIO()
+    final_img.save(final_buf, format="PNG", compress_level=2)
+    return orig_buf.getvalue(), orig_img.size, final_buf.getvalue(), final_img.size
+
+
 def run_web() -> None:
     st.set_page_config(page_title="Desktop Wallpaper Resizer (Real-ESRGAN)", layout="wide")
     st.title("Desktop Wallpaper Resizer & AI Upscaler")
-    st.caption("Tải ảnh từ Internet hoặc máy tính, tự động căn khung và giữ độ sắc nét bằng Real-ESRGAN.")
+    st.caption("Tải ảnh từ Internet hoặc máy tính, tự động căn khung và giữ độ sắc nét.")
 
     with st.sidebar:
         st.header("Cấu hình đầu ra")
@@ -38,8 +63,10 @@ def run_web() -> None:
         else:
             target_w, target_h = PRESETS[preset_label]
 
-        model_label = st.selectbox("Mô hình AI (Real-ESRGAN)", list(MODELS.keys()), index=0)
-        model_name = MODELS[model_label]
+        mode_label = st.selectbox("Chế độ xử lý & Tốc độ", list(SPEED_MODES.keys()), index=0)
+        use_ai, model_name = SPEED_MODES[mode_label]
+        if use_ai:
+            st.info("💡 Lưu ý: Trên Streamlit Cloud (không có GPU rời), chế độ AI chạy bằng CPU nên sẽ mất vài giây đến ~30s.")
 
     tab_url, tab_upload = st.tabs(["Tải từ URL Internet", "Upload từ máy tính"])
     source_input = None
@@ -55,32 +82,31 @@ def run_web() -> None:
             source_input = uploaded.getvalue()
 
     if st.button("Xử lý ảnh", type="primary", disabled=source_input is None):
-        processor = get_processor()
-        with st.spinner(f"Đang xử lý ảnh về {target_w}x{target_h} với {model_name}..."):
+        with st.spinner(f"Đang xử lý ảnh về {target_w}x{target_h}..."):
             try:
-                orig_img = processor.load_image(source_input)
-                final_img = processor.process_image(
-                    orig_img, target_w=target_w, target_h=target_h, model=model_name
-                )
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader(f"Ảnh gốc ({orig_img.width}x{orig_img.height})")
-                    st.image(orig_img, use_container_width=True)
-                with col2:
-                    st.subheader(f"Ảnh Desktop ({final_img.width}x{final_img.height})")
-                    st.image(final_img, use_container_width=True)
-
-                buf = io.BytesIO()
-                final_img.save(buf, format="PNG")
-                st.download_button(
-                    label=f"Tải xuống hình nền ({target_w}x{target_h} PNG)",
-                    data=buf.getvalue(),
-                    file_name=f"wallpaper_{target_w}x{target_h}.png",
-                    mime="image/png",
-                    type="primary",
+                st.session_state["last_result"] = process_cached(
+                    source_input, target_w, target_h, model_name, use_ai
                 )
             except Exception as exc:
                 st.error(f"Lỗi khi xử lý ảnh: {exc}")
+
+    if "last_result" in st.session_state:
+        orig_bytes, (orig_w, orig_h), final_bytes, (final_w, final_h) = st.session_state["last_result"]
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader(f"Ảnh gốc ({orig_w}x{orig_h})")
+            st.image(orig_bytes, use_container_width=True)
+        with col2:
+            st.subheader(f"Ảnh Desktop ({final_w}x{final_h})")
+            st.image(final_bytes, use_container_width=True)
+
+        st.download_button(
+            label=f"Tải xuống hình nền ({final_w}x{final_h} PNG)",
+            data=final_bytes,
+            file_name=f"wallpaper_{final_w}x{final_h}.png",
+            mime="image/png",
+            type="primary",
+        )
 
 
 if __name__ == "__main__":

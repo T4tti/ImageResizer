@@ -115,7 +115,7 @@ class ImageProcessor:
             with tempfile.TemporaryDirectory() as tmpdir:
                 in_path = Path(tmpdir) / "input.png"
                 out_path = Path(tmpdir) / "output.png"
-                img.save(in_path, format="PNG")
+                img.save(in_path, format="PNG", compress_level=1)
                 cmd = [
                     str(exe),
                     "-i",
@@ -135,9 +135,13 @@ class ImageProcessor:
             res = img.resize((img.width * scale, img.height * scale), Image.Resampling.LANCZOS)
             return res.filter(ImageFilter.UnsharpMask(radius=1.5, percent=140, threshold=2))
 
-    def resize_and_sharpen(self, img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+    def resize_and_sharpen(
+        self, img: Image.Image, target_w: int, target_h: int, strong: bool = False
+    ) -> Image.Image:
         if img.size != (target_w, target_h):
             img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        if strong:
+            return img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=135, threshold=2))
         return img.filter(ImageFilter.UnsharpMask(radius=1.0, percent=110, threshold=3))
 
     def process_image(
@@ -146,12 +150,26 @@ class ImageProcessor:
         target_w: int = 1920,
         target_h: int = 1080,
         model: str = "realesrgan-x4plus",
+        use_ai: bool = True,
     ) -> Image.Image:
         img = source.convert("RGB") if isinstance(source, Image.Image) else self.load_image(source)
         img = self.crop_to_aspect(img, target_w, target_h)
-        while img.width < target_w or img.height < target_h:
-            img = self.upscale(img, model=model, scale=4)
-        return self.resize_and_sharpen(img, target_w, target_h)
+        needed_scale = max(target_w / img.width, target_h / img.height)
+
+        if use_ai and needed_scale > 1.25:
+            if model == "realesr-animevideov3":
+                scale = 2 if needed_scale <= 2.2 else (3 if needed_scale <= 3.2 else 4)
+            else:
+                scale = 4
+            # Cap input dimensions so AI output does not exceed 1.25x of target size
+            max_in_w = max(1, round(target_w * 1.25 / scale))
+            max_in_h = max(1, round(target_h * 1.25 / scale))
+            if img.width > max_in_w or img.height > max_in_h:
+                img = img.resize((max_in_w, max_in_h), Image.Resampling.LANCZOS)
+            img = self.upscale(img, model=model, scale=scale)
+            return self.resize_and_sharpen(img, target_w, target_h, strong=False)
+
+        return self.resize_and_sharpen(img, target_w, target_h, strong=(needed_scale > 1.0))
 
     def process(
         self,
@@ -160,8 +178,11 @@ class ImageProcessor:
         target_w: int = 1920,
         target_h: int = 1080,
         model: str = "realesrgan-x4plus",
+        use_ai: bool = True,
     ) -> Path:
-        img = self.process_image(source, target_w=target_w, target_h=target_h, model=model)
+        img = self.process_image(
+            source, target_w=target_w, target_h=target_h, model=model, use_ai=use_ai
+        )
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         img.save(out, quality=95)
