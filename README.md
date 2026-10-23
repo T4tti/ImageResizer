@@ -43,7 +43,7 @@ uv run streamlit run streamlit_app.py
 uv run imageresizer "https://images.unsplash.com/photo-..." -o wallpaper.png
 
 # Resize a local image to 2K (2560x1440) using the anime model
-uv run imageresizer "./my_image.jpg" -o wallpaper.png -W 2560 -H 1440 -m realesrgan-x4plus-anime
+uv run imageresizer "./my_image.jpg" -o wallpaper.png -W 960 -H 1280 -m realesrgan-x4plus
 ```
 
 ---

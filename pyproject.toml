@@ -1,0 +1,23 @@
+[project]
+name = "imageresizer"
+version = "0.1.0"
+description = "Desktop Wallpaper Resizer & AI Upscaler"
+readme = "README.md"
+authors = [
+    { name = "Lê Nguyễn Thành Tài", email = "taile.ngth@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26.0",
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "requests>=2.31.0",
+    "streamlit>=1.45.0",
+]
+
+[project.scripts]
+imageresizer = "imageresizer:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
